@@ -54,8 +54,8 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-12 font-sans selection:bg-cyan-500/30">
-      <div className="max-w-5xl mx-auto space-y-10">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500/30 flex flex-col justify-between">
+      <main className="max-w-5xl mx-auto w-full p-6 md:p-12 space-y-10 flex-grow">
         
         {/* Premium Header */}
         <header className="border-b border-slate-800/60 pb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -295,9 +295,30 @@ export default function Home() {
             </div>
           </div>
         )}
-
-      </div>
+      </main>
       
+      {/* Footer with Powered by AROM */}
+      <footer className="w-full border-t border-slate-800/80 bg-slate-950/40 py-6 text-center text-xs text-slate-500 mt-20">
+        <div className="max-w-5xl mx-auto px-6 md:px-12 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="tracking-wide">
+            Pravesh-Setu & Skill-Grid — Decentralized Anti-Leak & Skill Infrastructure
+          </p>
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>System Operational</span>
+            <span className="text-slate-700">|</span>
+            <a 
+              href="https://arom-one.vercel.app" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hover:text-cyan-400 transition-colors font-medium tracking-wider text-slate-400"
+            >
+              Powered by <span className="text-slate-200 font-bold">ΛROM</span>
+            </a>
+          </div>
+        </div>
+      </footer>
+
       {/* Basic Custom Scrollbar for overflow areas */}
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
@@ -305,6 +326,6 @@ export default function Home() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
       `}} />
-    </main>
+    </div>
   );
 }
