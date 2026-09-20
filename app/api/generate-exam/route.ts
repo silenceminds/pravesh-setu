@@ -3,15 +3,10 @@ import crypto from 'crypto';
 import { GoogleGenAI } from '@google/genai';
 import { supabase } from '@/lib/supabase';
 
-// Enterprise configuration: Extend Vercel serverless timeout to 60 seconds
 export const maxDuration = 60;
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
-/**
- * Enterprise Retry Wrapper with Exponential Backoff
- * Prevents intermittent 500 errors from transient AI rate limits or network blips.
- */
 async function generateWithRetry(prompt: string, retries = 3, delay = 1000): Promise<string> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -31,7 +26,6 @@ async function generateWithRetry(prompt: string, retries = 3, delay = 1000): Pro
     } catch (error: any) {
       console.warn(`[Gemini Synthesis Attempt ${attempt}/${retries}] Failed:`, error.message);
       if (attempt === retries) throw error;
-      // Exponential backoff delay
       await new Promise((res) => setTimeout(res, delay * attempt));
     }
   }
@@ -43,7 +37,6 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { subject, topic, variantId } = body;
 
-    // 1. Rigorous Input Validation
     if (!subject || typeof subject !== 'string' || !topic || typeof topic !== 'string') {
       return NextResponse.json(
         { success: false, error: 'Invalid or missing subject and topic parameters.' },
@@ -58,9 +51,10 @@ export async function POST(req: Request) {
       Synthesize an exam variant (Variant Seed: ${resolvedVariantId}).
       Generate exactly 3 highly conceptual questions testing core fundamentals rather than rote recall.
       
-      CRITICAL FORMATTING INSTRUCTION: You MUST use strict LaTeX formatting for all mathematical equations, variables, physical constants, and symbols. 
-      - Wrap inline math in single $ signs (e.g., $F = ma$, $\\omega$).
-      - Wrap block equations in double $$ signs.
+      CRITICAL FORMATTING & JSON ESCAPING RULES:
+      1. You MUST use strict LaTeX formatting for all mathematical equations, variables, physical constants, and symbols. 
+      2. Wrap inline math in single $ signs (e.g., $F = ma$, $\\omega$).
+      3. CRITICAL JSON RULE: Because this output is parsed as strict JSON, you MUST double-escape all LaTeX backslashes (e.g., use "\\\\frac", "\\\\tau", "\\\\theta", "\\\\omega", "\\\\vec") so that control characters like \\t or \\n do not break JSON parsing.
       
       Return ONLY valid JSON with this exact structure:
       {
@@ -68,7 +62,7 @@ export async function POST(req: Request) {
         "questions": [
           {
             "id": 1,
-            "problem": "Detailed question text utilizing LaTeX for math",
+            "problem": "Detailed question text utilizing properly escaped LaTeX for math",
             "concept_tested": "Specific concept",
             "difficulty": "Moderate | High"
           }
@@ -76,19 +70,17 @@ export async function POST(req: Request) {
       }
     `;
 
-    // 2. Resilient AI Generation
     const rawText = await generateWithRetry(prompt);
-
-    // Sanitize output (remove potential markdown wrappers if present)
     const cleanedText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
 
     let parsedData;
     try {
       parsedData = JSON.parse(cleanedText);
     } catch (parseError: any) {
-      console.error('[JSON Parse Error]:', cleanedText);
+      console.error('[JSON Parse Error]:', parseError.message);
+      console.error('[Raw AI Text Output]:', cleanedText);
       return NextResponse.json(
-        { success: false, error: 'Failed to parse structured exam schema from AI output.' },
+        { success: false, error: 'Failed to parse structured exam schema due to LaTeX escape collision.' },
         { status: 502 }
       );
     }
@@ -97,11 +89,9 @@ export async function POST(req: Request) {
       throw new Error('AI response structure violated the required question schema.');
     }
 
-    // 3. Cryptographic Sealing (SHA-256 Tamper-Evident Hash)
     const paperPayloadString = JSON.stringify(parsedData.questions);
     const paperHash = crypto.createHash('sha256').update(paperPayloadString).digest('hex');
 
-    // 4. Database Persistence with Enterprise Error Handling
     const { data: dbEntry, error: dbError } = await supabase
       .from('exam_nodes')
       .insert({
